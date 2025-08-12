@@ -29,7 +29,6 @@ import {
   Globe,
   Loader2,
   ArrowUpRight,
-  ArrowDownRight,
 } from "lucide-react";
 
 // Utility functions
@@ -42,7 +41,6 @@ const COLORS = {
   secondary: "#161A40", 
   light: "#eaeaea", 
   white: "#ffffff", 
-  black: "#000000",
   gray: "#6b7280",
   lightGray: "#f9fafb",
 };
@@ -132,6 +130,35 @@ function genWebMock(fromISO, toISO) {
   return { sessions, users, conversions, revenue, bounceRate, avgSessionDuration, daily };
 }
 
+// KPI Card Component
+function KPICard({ label, value, change, icon: Icon }) {
+  return (
+    <div className="kpi-card">
+      <div className="kpi-header">
+        <div className="kpi-label">{label}</div>
+        {Icon && <Icon className="kpi-icon" />}
+      </div>
+      <div className="kpi-value">{value}</div>
+      {change && (
+        <div className="kpi-change">
+          <ArrowUpRight className="change-icon" />
+          <span>{change}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Chart Card Component
+function ChartCard({ title, children }) {
+  return (
+    <div className="chart-card">
+      <h3 className="chart-title">{title}</h3>
+      {children}
+    </div>
+  );
+}
+
 export default function App() {
   const today = toISODate(new Date());
   const [fromISO, setFromISO] = useState(toISODate(daysBack(27)));
@@ -167,945 +194,570 @@ export default function App() {
   }, [fromISO, toISO]);
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      backgroundColor: COLORS.lightGray,
-      fontFamily: 'Segoe UI, system-ui, sans-serif'
-    }}>
-      {/* Header */}
-      <div style={{ backgroundColor: COLORS.white, borderBottom: '1px solid #e5e7eb' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '24px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+    <>
+      <style>{`
+        * {
+          box-sizing: border-box;
+          margin: 0;
+          padding: 0;
+        }
+        
+        body {
+          font-family: 'Segoe UI', system-ui, sans-serif;
+          background-color: ${COLORS.lightGray};
+        }
+        
+        .dashboard {
+          min-height: 100vh;
+          background-color: ${COLORS.lightGray};
+        }
+        
+        .header {
+          background-color: ${COLORS.white};
+          border-bottom: 1px solid #e5e7eb;
+          padding: 24px;
+        }
+        
+        .header-container {
+          max-width: 1200px;
+          margin: 0 auto;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 24px;
+        }
+        
+        .header-left {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+        }
+        
+        .header-icon {
+          padding: 12px;
+          border-radius: 12px;
+          background-color: ${COLORS.primary}15;
+        }
+        
+        .header-title {
+          font-size: 32px;
+          font-weight: bold;
+          color: ${COLORS.secondary};
+          margin: 0 0 8px 0;
+        }
+        
+        .header-subtitle {
+          color: ${COLORS.gray};
+          margin: 0;
+        }
+        
+        .header-controls {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          flex-wrap: wrap;
+        }
+        
+        .date-input {
+          border: 1px solid #d1d5db;
+          border-radius: 8px;
+          padding: 8px 12px;
+          font-size: 14px;
+          outline: none;
+        }
+        
+        .refresh-btn {
+          background-color: ${COLORS.primary};
+          color: ${COLORS.white};
+          border: none;
+          border-radius: 8px;
+          padding: 8px 16px;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        
+        .refresh-btn:disabled {
+          opacity: 0.6;
+        }
+        
+        .tabs {
+          background-color: ${COLORS.white};
+          border-bottom: 1px solid #e5e7eb;
+          padding: 0 24px;
+        }
+        
+        .tabs-container {
+          max-width: 1200px;
+          margin: 0 auto;
+          display: flex;
+          gap: 4px;
+        }
+        
+        .tab {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 12px 16px;
+          font-size: 14px;
+          font-weight: 500;
+          border: none;
+          border-radius: 8px;
+          cursor: pointer;
+          background-color: transparent;
+          color: ${COLORS.gray};
+          transition: all 0.2s ease;
+        }
+        
+        .tab.active {
+          background-color: ${COLORS.primary};
+          color: ${COLORS.white};
+        }
+        
+        .content {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 32px 24px;
+        }
+        
+        .loading {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 48px 0;
+          gap: 12px;
+          color: ${COLORS.gray};
+        }
+        
+        .kpi-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 24px;
+          margin-bottom: 32px;
+        }
+        
+        .kpi-card {
+          background-color: ${COLORS.white};
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
+          padding: 24px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+          transition: all 0.2s ease;
+        }
+        
+        .kpi-card:hover {
+          box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .kpi-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 16px;
+        }
+        
+        .kpi-label {
+          font-size: 14px;
+          font-weight: 500;
+          color: ${COLORS.gray};
+        }
+        
+        .kpi-icon {
+          width: 20px;
+          height: 20px;
+          color: ${COLORS.gray};
+        }
+        
+        .kpi-value {
+          font-size: 36px;
+          font-weight: bold;
+          color: ${COLORS.secondary};
+          margin-bottom: 8px;
+        }
+        
+        .kpi-change {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          color: ${COLORS.primary};
+          font-size: 14px;
+          font-weight: 500;
+        }
+        
+        .change-icon {
+          width: 16px;
+          height: 16px;
+        }
+        
+        .charts-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+          gap: 24px;
+        }
+        
+        .chart-card {
+          background-color: ${COLORS.white};
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
+          padding: 24px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .chart-title {
+          font-size: 18px;
+          font-weight: 600;
+          color: ${COLORS.secondary};
+          margin: 0 0 24px 0;
+        }
+        
+        .chart-container {
+          height: 300px;
+        }
+        
+        @media (max-width: 768px) {
+          .header-container {
+            flex-direction: column;
+            align-items: stretch;
+          }
+          
+          .header-controls {
+            justify-content: center;
+          }
+          
+          .kpi-grid {
+            grid-template-columns: 1fr;
+          }
+          
+          .charts-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+      `}</style>
+      
+      <div className="dashboard">
+        {/* Header */}
+        <div className="header">
+          <div className="header-container">
+            <div className="header-left">
               <motion.div 
                 initial={{ scale: 0.8, opacity: 0 }} 
                 animate={{ scale: 1, opacity: 1 }}
-                style={{
-                  padding: '12px',
-                  borderRadius: '12px',
-                  backgroundColor: `${COLORS.primary}15`
-                }}
+                className="header-icon"
               >
-                <Rocket style={{ width: '32px', height: '32px', color: COLORS.primary }} />
+                <Rocket style={{ width: 32, height: 32, color: COLORS.primary }} />
               </motion.div>
               <div>
-                <h1 style={{ 
-                  fontSize: '32px', 
-                  fontWeight: 'bold', 
-                  margin: '0 0 8px 0',
-                  color: COLORS.secondary,
-                  fontFamily: 'Segoe UI, system-ui, sans-serif'
-                }}>
-                  Marketing Dashboard
-                </h1>
-                <p style={{ 
-                  margin: 0, 
-                  color: COLORS.gray,
-                  fontFamily: 'Segoe UI, system-ui, sans-serif'
-                }}>
-                  Track performance across LinkedIn, YouTube, and your website
-                </p>
+                <h1 className="header-title">Marketing Dashboard</h1>
+                <p className="header-subtitle">Track performance across LinkedIn, YouTube, and your website</p>
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+            <div className="header-controls">
               <input 
                 type="date" 
                 value={fromISO} 
                 onChange={(e) => setFromISO(e.target.value)}
-                style={{
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  padding: '8px 12px',
-                  fontSize: '14px',
-                  fontFamily: 'Segoe UI, system-ui, sans-serif',
-                  outline: 'none'
-                }}
+                className="date-input"
               />
-              <span style={{ color: COLORS.gray, fontSize: '14px' }}>to</span>
+              <span style={{ color: COLORS.gray, fontSize: 14 }}>to</span>
               <input 
                 type="date" 
                 value={toISO} 
                 onChange={(e) => setToISO(e.target.value)}
-                style={{
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  padding: '8px 12px',
-                  fontSize: '14px',
-                  fontFamily: 'Segoe UI, system-ui, sans-serif',
-                  outline: 'none'
-                }}
+                className="date-input"
               />
-              <button
-                onClick={loadAll} 
-                disabled={loading}
-                style={{
-                  backgroundColor: COLORS.primary,
-                  color: COLORS.white,
-                  border: 'none',
-                  borderRadius: '8px',
-                  padding: '8px 16px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  fontFamily: 'Segoe UI, system-ui, sans-serif',
-                  opacity: loading ? 0.6 : 1
-                }}
-              >
-                {loading ? <Loader2 style={{ width: '16px', height: '16px' }} className="animate-spin" /> : 'Refresh Data'}
+              <button onClick={loadAll} disabled={loading} className="refresh-btn">
+                {loading ? <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" /> : 'Refresh Data'}
               </button>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Tabs */}
-      <div style={{ backgroundColor: COLORS.white, borderBottom: '1px solid #e5e7eb' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '0 24px' }}>
-          <div style={{ display: 'flex', gap: '4px' }}>
-            {[
-              { key: 'linkedin', label: 'LinkedIn', icon: Linkedin },
-              { key: 'youtube', label: 'YouTube', icon: Youtube },
-              { key: 'website', label: 'Website', icon: Globe }
-            ].map(({ key, label, icon: Icon }) => (
-              <button
-                key={key}
-                onClick={() => setActiveTab(key)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '12px 16px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  backgroundColor: activeTab === key ? COLORS.primary : 'transparent',
-                  color: activeTab === key ? COLORS.white : COLORS.gray,
-                  fontFamily: 'Segoe UI, system-ui, sans-serif',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <Icon style={{ width: '16px', height: '16px' }} />
-                {label}
-              </button>
-            ))}
+        {/* Tabs */}
+        <div className="tabs">
+          <div className="tabs-container">
+            <button 
+              className={`tab ${activeTab === 'linkedin' ? 'active' : ''}`}
+              onClick={() => setActiveTab('linkedin')}
+            >
+              <Linkedin style={{ width: 16, height: 16 }} />
+              LinkedIn
+            </button>
+            <button 
+              className={`tab ${activeTab === 'youtube' ? 'active' : ''}`}
+              onClick={() => setActiveTab('youtube')}
+            >
+              <Youtube style={{ width: 16, height: 16 }} />
+              YouTube
+            </button>
+            <button 
+              className={`tab ${activeTab === 'website' ? 'active' : ''}`}
+              onClick={() => setActiveTab('website')}
+            >
+              <Globe style={{ width: 16, height: 16 }} />
+              Website
+            </button>
           </div>
         </div>
-      </div>
 
-      {/* Content */}
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '32px 24px' }}>
-        {loading ? (
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            padding: '48px 0',
-            gap: '12px'
-          }}>
-            <Loader2 style={{ width: '24px', height: '24px', color: COLORS.gray }} className="animate-spin" />
-            <span style={{ color: COLORS.gray, fontFamily: 'Segoe UI, system-ui, sans-serif' }}>
-              Loading data...
-            </span>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
-            {/* KPI Cards Grid */}
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-              gap: '24px'
-            }}>
-              {activeTab === 'linkedin' && li && (
-                <>
-                  <div style={{
-                    backgroundColor: COLORS.white,
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '12px',
-                    padding: '24px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                    transition: 'all 0.2s ease'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                      <div style={{ 
-                        fontSize: '14px', 
-                        fontWeight: '500', 
-                        color: COLORS.gray,
-                        fontFamily: 'Segoe UI, system-ui, sans-serif'
-                      }}>
-                        Impressions
-                      </div>
-                      <Eye style={{ width: '20px', height: '20px', color: COLORS.gray }} />
-                    </div>
-                    <div style={{ 
-                      fontSize: '36px', 
-                      fontWeight: 'bold', 
-                      color: COLORS.secondary,
-                      marginBottom: '8px',
-                      fontFamily: 'Segoe UI, system-ui, sans-serif'
-                    }}>
-                      {fmt0.format(web.users)}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <ArrowUpRight style={{ width: '16px', height: '16px', color: COLORS.primary }} />
-                      <span style={{ 
-                        fontSize: '14px', 
-                        fontWeight: '500', 
-                        color: COLORS.primary,
-                        fontFamily: 'Segoe UI, system-ui, sans-serif'
-                      }}>
-                        4.2%
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{
-                    backgroundColor: COLORS.white,
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '12px',
-                    padding: '24px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                      <div style={{ 
-                        fontSize: '14px', 
-                        fontWeight: '500', 
-                        color: COLORS.gray,
-                        fontFamily: 'Segoe UI, system-ui, sans-serif'
-                      }}>
-                        Conversions
-                      </div>
-                      <TrendingUp style={{ width: '20px', height: '20px', color: COLORS.gray }} />
-                    </div>
-                    <div style={{ 
-                      fontSize: '36px', 
-                      fontWeight: 'bold', 
-                      color: COLORS.secondary,
-                      marginBottom: '8px',
-                      fontFamily: 'Segoe UI, system-ui, sans-serif'
-                    }}>
-                      {fmt0.format(web.conversions)}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <ArrowUpRight style={{ width: '16px', height: '16px', color: COLORS.primary }} />
-                      <span style={{ 
-                        fontSize: '14px', 
-                        fontWeight: '500', 
-                        color: COLORS.primary,
-                        fontFamily: 'Segoe UI, system-ui, sans-serif'
-                      }}>
-                        18.3%
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{
-                    backgroundColor: COLORS.white,
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '12px',
-                    padding: '24px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                      <div style={{ 
-                        fontSize: '14px', 
-                        fontWeight: '500', 
-                        color: COLORS.gray,
-                        fontFamily: 'Segoe UI, system-ui, sans-serif'
-                      }}>
-                        Revenue
-                      </div>
-                      <DollarSign style={{ width: '20px', height: '20px', color: COLORS.gray }} />
-                    </div>
-                    <div style={{ 
-                      fontSize: '36px', 
-                      fontWeight: 'bold', 
-                      color: COLORS.secondary,
-                      marginBottom: '8px',
-                      fontFamily: 'Segoe UI, system-ui, sans-serif'
-                    }}>
-                      {fmtMoney.format(web.revenue)}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <ArrowUpRight style={{ width: '16px', height: '16px', color: COLORS.primary }} />
-                      <span style={{ 
-                        fontSize: '14px', 
-                        fontWeight: '500', 
-                        color: COLORS.primary,
-                        fontFamily: 'Segoe UI, system-ui, sans-serif'
-                      }}>
-                        22.1%
-                      </span>
-                    </div>
-                  </div>
-                </>
-              )}
+        {/* Content */}
+        <div className="content">
+          {loading ? (
+            <div className="loading">
+              <Loader2 style={{ width: 24, height: 24 }} className="animate-spin" />
+              <span>Loading data...</span>
             </div>
+          ) : (
+            <>
+              {/* KPI Cards */}
+              <div className="kpi-grid">
+                {activeTab === 'linkedin' && li && (
+                  <>
+                    <KPICard 
+                      label="Impressions"
+                      value={fmt0.format(li.impressions)}
+                      change={`${fmt.format(li.ctr * 100)}% CTR`}
+                      icon={Eye}
+                    />
+                    <KPICard 
+                      label="Clicks"
+                      value={fmt0.format(li.clicks)}
+                      change={fmtMoney.format(li.cpc) + " CPC"}
+                      icon={MousePointerClick}
+                    />
+                    <KPICard 
+                      label="Spend"
+                      value={fmtMoney.format(li.spend)}
+                      change={`CPL: ${fmtMoney.format(li.spend / Math.max(1, li.leads))}`}
+                      icon={DollarSign}
+                    />
+                    <KPICard 
+                      label="Leads"
+                      value={fmt0.format(li.leads)}
+                      change="12.5%"
+                      icon={TrendingUp}
+                    />
+                  </>
+                )}
 
-            {/* Charts Section */}
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-              gap: '24px'
-            }}>
-              {activeTab === 'linkedin' && li && (
-                <>
-                  <div style={{
-                    backgroundColor: COLORS.white,
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '12px',
-                    padding: '24px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                  }}>
-                    <h3 style={{ 
-                      fontSize: '18px', 
-                      fontWeight: '600', 
-                      color: COLORS.secondary,
-                      margin: '0 0 24px 0',
-                      fontFamily: 'Segoe UI, system-ui, sans-serif'
-                    }}>
-                      Impressions Over Time
-                    </h3>
-                    <div style={{ height: '300px' }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={li.posts}>
-                          <defs>
-                            <linearGradient id="impressions" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor={COLORS.primary} stopOpacity={0.3}/>
-                              <stop offset="95%" stopColor={COLORS.primary} stopOpacity={0}/>
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                          <XAxis dataKey="date" tick={{ fontSize: 12, fontFamily: 'Segoe UI' }} />
-                          <YAxis tick={{ fontSize: 12, fontFamily: 'Segoe UI' }} />
-                          <RechartsTooltip 
-                            contentStyle={{ 
-                              fontFamily: 'Segoe UI, system-ui, sans-serif',
-                              border: 'none',
-                              borderRadius: '8px',
-                              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                            }}
-                          />
-                          <Area 
-                            type="monotone" 
-                            dataKey="impressions" 
-                            stroke={COLORS.primary} 
-                            fill="url(#impressions)"
-                            strokeWidth={2}
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
+                {activeTab === 'youtube' && yt && (
+                  <>
+                    <KPICard 
+                      label="Views"
+                      value={fmt0.format(yt.views)}
+                      change="8.2%"
+                      icon={Eye}
+                    />
+                    <KPICard 
+                      label="Watch Time"
+                      value={`${fmt0.format(yt.watchTime)}m`}
+                      change="15.1%"
+                      icon={Clock3}
+                    />
+                    <KPICard 
+                      label="Subscribers"
+                      value={fmt0.format(yt.subscribers)}
+                      change="3.4%"
+                      icon={Users}
+                    />
+                    <KPICard 
+                      label="Avg View Duration"
+                      value={formatDuration(yt.averageViewDuration)}
+                      change="2.1%"
+                      icon={PlayCircle}
+                    />
+                  </>
+                )}
 
-                  <div style={{
-                    backgroundColor: COLORS.white,
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '12px',
-                    padding: '24px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                  }}>
-                    <h3 style={{ 
-                      fontSize: '18px', 
-                      fontWeight: '600', 
-                      color: COLORS.secondary,
-                      margin: '0 0 24px 0',
-                      fontFamily: 'Segoe UI, system-ui, sans-serif'
-                    }}>
-                      Engagement Metrics
-                    </h3>
-                    <div style={{ height: '300px' }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={li.posts}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                          <XAxis dataKey="date" tick={{ fontSize: 12, fontFamily: 'Segoe UI' }} />
-                          <YAxis tick={{ fontSize: 12, fontFamily: 'Segoe UI' }} />
-                          <RechartsTooltip 
-                            contentStyle={{ 
-                              fontFamily: 'Segoe UI, system-ui, sans-serif',
-                              border: 'none',
-                              borderRadius: '8px',
-                              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                            }}
-                          />
-                          <Line 
-                            type="monotone" 
-                            dataKey="reactions" 
-                            stroke={COLORS.primary} 
-                            strokeWidth={3}
-                            name="Reactions"
-                            dot={{ fill: COLORS.primary, strokeWidth: 2, r: 4 }}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                </>
-              )}
+                {activeTab === 'website' && web && (
+                  <>
+                    <KPICard 
+                      label="Sessions"
+                      value={fmt0.format(web.sessions)}
+                      change="5.7%"
+                      icon={Users}
+                    />
+                    <KPICard 
+                      label="Users"
+                      value={fmt0.format(web.users)}
+                      change="4.2%"
+                      icon={Eye}
+                    />
+                    <KPICard 
+                      label="Conversions"
+                      value={fmt0.format(web.conversions)}
+                      change="18.3%"
+                      icon={TrendingUp}
+                    />
+                    <KPICard 
+                      label="Revenue"
+                      value={fmtMoney.format(web.revenue)}
+                      change="22.1%"
+                      icon={DollarSign}
+                    />
+                  </>
+                )}
+              </div>
 
-              {activeTab === 'youtube' && yt && (
-                <>
-                  <div style={{
-                    backgroundColor: COLORS.white,
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '12px',
-                    padding: '24px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                  }}>
-                    <h3 style={{ 
-                      fontSize: '18px', 
-                      fontWeight: '600', 
-                      color: COLORS.secondary,
-                      margin: '0 0 24px 0',
-                      fontFamily: 'Segoe UI, system-ui, sans-serif'
-                    }}>
-                      Views Over Time
-                    </h3>
-                    <div style={{ height: '300px' }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={yt.daily}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                          <XAxis dataKey="date" tick={{ fontSize: 12, fontFamily: 'Segoe UI' }} />
-                          <YAxis tick={{ fontSize: 12, fontFamily: 'Segoe UI' }} />
-                          <RechartsTooltip 
-                            contentStyle={{ 
-                              fontFamily: 'Segoe UI, system-ui, sans-serif',
-                              border: 'none',
-                              borderRadius: '8px',
-                              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                            }}
-                          />
-                          <Line 
-                            type="monotone" 
-                            dataKey="views" 
-                            stroke={COLORS.primary} 
-                            strokeWidth={3}
-                            dot={{ fill: COLORS.primary, strokeWidth: 2, r: 4 }}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
+              {/* Charts */}
+              <div className="charts-grid">
+                {activeTab === 'linkedin' && li && (
+                  <>
+                    <ChartCard title="Impressions Over Time">
+                      <div className="chart-container">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={li.posts}>
+                            <defs>
+                              <linearGradient id="impressions" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor={COLORS.primary} stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor={COLORS.primary} stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                            <YAxis tick={{ fontSize: 12 }} />
+                            <RechartsTooltip />
+                            <Area 
+                              type="monotone" 
+                              dataKey="impressions" 
+                              stroke={COLORS.primary} 
+                              fill="url(#impressions)"
+                              strokeWidth={2}
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </ChartCard>
 
-                  <div style={{
-                    backgroundColor: COLORS.white,
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '12px',
-                    padding: '24px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                  }}>
-                    <h3 style={{ 
-                      fontSize: '18px', 
-                      fontWeight: '600', 
-                      color: COLORS.secondary,
-                      margin: '0 0 24px 0',
-                      fontFamily: 'Segoe UI, system-ui, sans-serif'
-                    }}>
-                      Watch Time Distribution
-                    </h3>
-                    <div style={{ height: '300px' }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={yt.daily.slice(-7)}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                          <XAxis dataKey="date" tick={{ fontSize: 12, fontFamily: 'Segoe UI' }} />
-                          <YAxis tick={{ fontSize: 12, fontFamily: 'Segoe UI' }} />
-                          <RechartsTooltip 
-                            contentStyle={{ 
-                              fontFamily: 'Segoe UI, system-ui, sans-serif',
-                              border: 'none',
-                              borderRadius: '8px',
-                              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                            }}
-                          />
-                          <Bar dataKey="watchTime" fill={COLORS.primary} name="Watch Time (min)" />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                </>
-              )}
+                    <ChartCard title="Engagement Metrics">
+                      <div className="chart-container">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={li.posts}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                            <YAxis tick={{ fontSize: 12 }} />
+                            <RechartsTooltip />
+                            <Line 
+                              type="monotone" 
+                              dataKey="reactions" 
+                              stroke={COLORS.primary} 
+                              strokeWidth={3}
+                              name="Reactions"
+                              dot={{ fill: COLORS.primary, strokeWidth: 2, r: 4 }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </ChartCard>
+                  </>
+                )}
 
-              {activeTab === 'website' && web && (
-                <>
-                  <div style={{
-                    backgroundColor: COLORS.white,
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '12px',
-                    padding: '24px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                  }}>
-                    <h3 style={{ 
-                      fontSize: '18px', 
-                      fontWeight: '600', 
-                      color: COLORS.secondary,
-                      margin: '0 0 24px 0',
-                      fontFamily: 'Segoe UI, system-ui, sans-serif'
-                    }}>
-                      Sessions vs Conversions
-                    </h3>
-                    <div style={{ height: '300px' }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={web.daily}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                          <XAxis dataKey="date" tick={{ fontSize: 12, fontFamily: 'Segoe UI' }} />
-                          <YAxis tick={{ fontSize: 12, fontFamily: 'Segoe UI' }} />
-                          <RechartsTooltip 
-                            contentStyle={{ 
-                              fontFamily: 'Segoe UI, system-ui, sans-serif',
-                              border: 'none',
-                              borderRadius: '8px',
-                              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                            }}
-                          />
-                          <Legend wrapperStyle={{ fontFamily: 'Segoe UI, system-ui, sans-serif' }} />
-                          <Line 
-                            type="monotone" 
-                            dataKey="sessions" 
-                            stroke={COLORS.secondary} 
-                            strokeWidth={3}
-                            name="Sessions"
-                            dot={{ fill: COLORS.secondary, strokeWidth: 2, r: 4 }}
-                          />
-                          <Line 
-                            type="monotone" 
-                            dataKey="conversions" 
-                            stroke={COLORS.primary} 
-                            strokeWidth={3}
-                            name="Conversions"
-                            dot={{ fill: COLORS.primary, strokeWidth: 2, r: 4 }}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
+                {activeTab === 'youtube' && yt && (
+                  <>
+                    <ChartCard title="Views Over Time">
+                      <div className="chart-container">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={yt.daily}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                            <YAxis tick={{ fontSize: 12 }} />
+                            <RechartsTooltip />
+                            <Line 
+                              type="monotone" 
+                              dataKey="views" 
+                              stroke={COLORS.primary} 
+                              strokeWidth={3}
+                              dot={{ fill: COLORS.primary, strokeWidth: 2, r: 4 }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </ChartCard>
 
-                  <div style={{
-                    backgroundColor: COLORS.white,
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '12px',
-                    padding: '24px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                  }}>
-                    <h3 style={{ 
-                      fontSize: '18px', 
-                      fontWeight: '600', 
-                      color: COLORS.secondary,
-                      margin: '0 0 24px 0',
-                      fontFamily: 'Segoe UI, system-ui, sans-serif'
-                    }}>
-                      Revenue Over Time
-                    </h3>
-                    <div style={{ height: '300px' }}>
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={web.daily}>
-                          <defs>
-                            <linearGradient id="revenue" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor={COLORS.primary} stopOpacity={0.3}/>
-                              <stop offset="95%" stopColor={COLORS.primary} stopOpacity={0}/>
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                          <XAxis dataKey="date" tick={{ fontSize: 12, fontFamily: 'Segoe UI' }} />
-                          <YAxis tick={{ fontSize: 12, fontFamily: 'Segoe UI' }} />
-                          <RechartsTooltip 
-                            contentStyle={{ 
-                              fontFamily: 'Segoe UI, system-ui, sans-serif',
-                              border: 'none',
-                              borderRadius: '8px',
-                              boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                            }}
-                          />
-                          <Area 
-                            type="monotone" 
-                            dataKey="revenue" 
-                            stroke={COLORS.primary} 
-                            fill="url(#revenue)"
-                            strokeWidth={2}
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        )}
+                    <ChartCard title="Watch Time Distribution">
+                      <div className="chart-container">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={yt.daily.slice(-7)}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                            <YAxis tick={{ fontSize: 12 }} />
+                            <RechartsTooltip />
+                            <Bar dataKey="watchTime" fill={COLORS.primary} name="Watch Time (min)" />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </ChartCard>
+                  </>
+                )}
+
+                {activeTab === 'website' && web && (
+                  <>
+                    <ChartCard title="Sessions vs Conversions">
+                      <div className="chart-container">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={web.daily}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                            <YAxis tick={{ fontSize: 12 }} />
+                            <RechartsTooltip />
+                            <Legend />
+                            <Line 
+                              type="monotone" 
+                              dataKey="sessions" 
+                              stroke={COLORS.secondary} 
+                              strokeWidth={3}
+                              name="Sessions"
+                              dot={{ fill: COLORS.secondary, strokeWidth: 2, r: 4 }}
+                            />
+                            <Line 
+                              type="monotone" 
+                              dataKey="conversions" 
+                              stroke={COLORS.primary} 
+                              strokeWidth={3}
+                              name="Conversions"
+                              dot={{ fill: COLORS.primary, strokeWidth: 2, r: 4 }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </ChartCard>
+
+                    <ChartCard title="Revenue Over Time">
+                      <div className="chart-container">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={web.daily}>
+                            <defs>
+                              <linearGradient id="revenue" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor={COLORS.primary} stopOpacity={0.3}/>
+                                <stop offset="95%" stopColor={COLORS.primary} stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+                            <YAxis tick={{ fontSize: 12 }} />
+                            <RechartsTooltip />
+                            <Area 
+                              type="monotone" 
+                              dataKey="revenue" 
+                              stroke={COLORS.primary} 
+                              fill="url(#revenue)"
+                              strokeWidth={2}
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </ChartCard>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
-}'bold', 
-                      color: COLORS.secondary,
-                      marginBottom: '8px',
-                      fontFamily: 'Segoe UI, system-ui, sans-serif'
-                    }}>
-                      {fmt0.format(li.impressions)}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <ArrowUpRight style={{ width: '16px', height: '16px', color: COLORS.primary }} />
-                      <span style={{ 
-                        fontSize: '14px', 
-                        fontWeight: '500', 
-                        color: COLORS.primary,
-                        fontFamily: 'Segoe UI, system-ui, sans-serif'
-                      }}>
-                        {fmt.format(li.ctr * 100)}% CTR
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{
-                    backgroundColor: COLORS.white,
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '12px',
-                    padding: '24px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                    transition: 'all 0.2s ease'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                      <div style={{ 
-                        fontSize: '14px', 
-                        fontWeight: '500', 
-                        color: COLORS.gray,
-                        fontFamily: 'Segoe UI, system-ui, sans-serif'
-                      }}>
-                        Clicks
-                      </div>
-                      <MousePointerClick style={{ width: '20px', height: '20px', color: COLORS.gray }} />
-                    </div>
-                    <div style={{ 
-                      fontSize: '36px', 
-                      fontWeight: 'bold', 
-                      color: COLORS.secondary,
-                      marginBottom: '8px',
-                      fontFamily: 'Segoe UI, system-ui, sans-serif'
-                    }}>
-                      {fmt0.format(li.clicks)}
-                    </div>
-                    <div style={{ 
-                      fontSize: '14px', 
-                      color: COLORS.gray,
-                      fontFamily: 'Segoe UI, system-ui, sans-serif'
-                    }}>
-                      {fmtMoney.format(li.cpc)} CPC
-                    </div>
-                  </div>
-
-                  <div style={{
-                    backgroundColor: COLORS.white,
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '12px',
-                    padding: '24px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                    transition: 'all 0.2s ease'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                      <div style={{ 
-                        fontSize: '14px', 
-                        fontWeight: '500', 
-                        color: COLORS.gray,
-                        fontFamily: 'Segoe UI, system-ui, sans-serif'
-                      }}>
-                        Spend
-                      </div>
-                      <DollarSign style={{ width: '20px', height: '20px', color: COLORS.gray }} />
-                    </div>
-                    <div style={{ 
-                      fontSize: '36px', 
-                      fontWeight: 'bold', 
-                      color: COLORS.secondary,
-                      marginBottom: '8px',
-                      fontFamily: 'Segoe UI, system-ui, sans-serif'
-                    }}>
-                      {fmtMoney.format(li.spend)}
-                    </div>
-                    <div style={{ 
-                      fontSize: '14px', 
-                      color: COLORS.gray,
-                      fontFamily: 'Segoe UI, system-ui, sans-serif'
-                    }}>
-                      CPL: {fmtMoney.format(li.spend / Math.max(1, li.leads))}
-                    </div>
-                  </div>
-
-                  <div style={{
-                    backgroundColor: COLORS.white,
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '12px',
-                    padding: '24px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                    transition: 'all 0.2s ease'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                      <div style={{ 
-                        fontSize: '14px', 
-                        fontWeight: '500', 
-                        color: COLORS.gray,
-                        fontFamily: 'Segoe UI, system-ui, sans-serif'
-                      }}>
-                        Leads
-                      </div>
-                      <TrendingUp style={{ width: '20px', height: '20px', color: COLORS.gray }} />
-                    </div>
-                    <div style={{ 
-                      fontSize: '36px', 
-                      fontWeight: 'bold', 
-                      color: COLORS.secondary,
-                      marginBottom: '8px',
-                      fontFamily: 'Segoe UI, system-ui, sans-serif'
-                    }}>
-                      {fmt0.format(li.leads)}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <ArrowUpRight style={{ width: '16px', height: '16px', color: COLORS.primary }} />
-                      <span style={{ 
-                        fontSize: '14px', 
-                        fontWeight: '500', 
-                        color: COLORS.primary,
-                        fontFamily: 'Segoe UI, system-ui, sans-serif'
-                      }}>
-                        12.5%
-                      </span>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {activeTab === 'youtube' && yt && (
-                <>
-                  <div style={{
-                    backgroundColor: COLORS.white,
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '12px',
-                    padding: '24px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                      <div style={{ 
-                        fontSize: '14px', 
-                        fontWeight: '500', 
-                        color: COLORS.gray,
-                        fontFamily: 'Segoe UI, system-ui, sans-serif'
-                      }}>
-                        Views
-                      </div>
-                      <Eye style={{ width: '20px', height: '20px', color: COLORS.gray }} />
-                    </div>
-                    <div style={{ 
-                      fontSize: '36px', 
-                      fontWeight: 'bold', 
-                      color: COLORS.secondary,
-                      marginBottom: '8px',
-                      fontFamily: 'Segoe UI, system-ui, sans-serif'
-                    }}>
-                      {fmt0.format(yt.views)}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <ArrowUpRight style={{ width: '16px', height: '16px', color: COLORS.primary }} />
-                      <span style={{ 
-                        fontSize: '14px', 
-                        fontWeight: '500', 
-                        color: COLORS.primary,
-                        fontFamily: 'Segoe UI, system-ui, sans-serif'
-                      }}>
-                        8.2%
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{
-                    backgroundColor: COLORS.white,
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '12px',
-                    padding: '24px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                      <div style={{ 
-                        fontSize: '14px', 
-                        fontWeight: '500', 
-                        color: COLORS.gray,
-                        fontFamily: 'Segoe UI, system-ui, sans-serif'
-                      }}>
-                        Watch Time
-                      </div>
-                      <Clock3 style={{ width: '20px', height: '20px', color: COLORS.gray }} />
-                    </div>
-                    <div style={{ 
-                      fontSize: '36px', 
-                      fontWeight: 'bold', 
-                      color: COLORS.secondary,
-                      marginBottom: '8px',
-                      fontFamily: 'Segoe UI, system-ui, sans-serif'
-                    }}>
-                      {fmt0.format(yt.watchTime)}m
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <ArrowUpRight style={{ width: '16px', height: '16px', color: COLORS.primary }} />
-                      <span style={{ 
-                        fontSize: '14px', 
-                        fontWeight: '500', 
-                        color: COLORS.primary,
-                        fontFamily: 'Segoe UI, system-ui, sans-serif'
-                      }}>
-                        15.1%
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{
-                    backgroundColor: COLORS.white,
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '12px',
-                    padding: '24px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                      <div style={{ 
-                        fontSize: '14px', 
-                        fontWeight: '500', 
-                        color: COLORS.gray,
-                        fontFamily: 'Segoe UI, system-ui, sans-serif'
-                      }}>
-                        Subscribers
-                      </div>
-                      <Users style={{ width: '20px', height: '20px', color: COLORS.gray }} />
-                    </div>
-                    <div style={{ 
-                      fontSize: '36px', 
-                      fontWeight: 'bold', 
-                      color: COLORS.secondary,
-                      marginBottom: '8px',
-                      fontFamily: 'Segoe UI, system-ui, sans-serif'
-                    }}>
-                      {fmt0.format(yt.subscribers)}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <ArrowUpRight style={{ width: '16px', height: '16px', color: COLORS.primary }} />
-                      <span style={{ 
-                        fontSize: '14px', 
-                        fontWeight: '500', 
-                        color: COLORS.primary,
-                        fontFamily: 'Segoe UI, system-ui, sans-serif'
-                      }}>
-                        3.4%
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{
-                    backgroundColor: COLORS.white,
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '12px',
-                    padding: '24px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                      <div style={{ 
-                        fontSize: '14px', 
-                        fontWeight: '500', 
-                        color: COLORS.gray,
-                        fontFamily: 'Segoe UI, system-ui, sans-serif'
-                      }}>
-                        Avg View Duration
-                      </div>
-                      <PlayCircle style={{ width: '20px', height: '20px', color: COLORS.gray }} />
-                    </div>
-                    <div style={{ 
-                      fontSize: '36px', 
-                      fontWeight: 'bold', 
-                      color: COLORS.secondary,
-                      marginBottom: '8px',
-                      fontFamily: 'Segoe UI, system-ui, sans-serif'
-                    }}>
-                      {formatDuration(yt.averageViewDuration)}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <ArrowUpRight style={{ width: '16px', height: '16px', color: COLORS.primary }} />
-                      <span style={{ 
-                        fontSize: '14px', 
-                        fontWeight: '500', 
-                        color: COLORS.primary,
-                        fontFamily: 'Segoe UI, system-ui, sans-serif'
-                      }}>
-                        2.1%
-                      </span>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {activeTab === 'website' && web && (
-                <>
-                  <div style={{
-                    backgroundColor: COLORS.white,
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '12px',
-                    padding: '24px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                      <div style={{ 
-                        fontSize: '14px', 
-                        fontWeight: '500', 
-                        color: COLORS.gray,
-                        fontFamily: 'Segoe UI, system-ui, sans-serif'
-                      }}>
-                        Sessions
-                      </div>
-                      <Users style={{ width: '20px', height: '20px', color: COLORS.gray }} />
-                    </div>
-                    <div style={{ 
-                      fontSize: '36px', 
-                      fontWeight: 'bold', 
-                      color: COLORS.secondary,
-                      marginBottom: '8px',
-                      fontFamily: 'Segoe UI, system-ui, sans-serif'
-                    }}>
-                      {fmt0.format(web.sessions)}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <ArrowUpRight style={{ width: '16px', height: '16px', color: COLORS.primary }} />
-                      <span style={{ 
-                        fontSize: '14px', 
-                        fontWeight: '500', 
-                        color: COLORS.primary,
-                        fontFamily: 'Segoe UI, system-ui, sans-serif'
-                      }}>
-                        5.7%
-                      </span>
-                    </div>
-                  </div>
-
-                  <div style={{
-                    backgroundColor: COLORS.white,
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '12px',
-                    padding: '24px',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-                      <div style={{ 
-                        fontSize: '14px', 
-                        fontWeight: '500', 
-                        color: COLORS.gray,
-                        fontFamily: 'Segoe UI, system-ui, sans-serif'
-                      }}>
-                        Users
-                      </div>
-                      <Eye style={{ width: '20px', height: '20px', color: COLORS.gray }} />
-                    </div>
-                    <div style={{ 
-                      fontSize: '36px', 
-                      fontWeight:
+}
